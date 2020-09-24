@@ -8,12 +8,35 @@
     jenkins_http_port: 80
     jenkins_connection_retries: 60
     jenkins_process_user: root
-#    jenkins_plugins:
-#      - blueocean
-#      - name: influxdb
-#        version: "1.12.1"
-#        jenkins_plugins_state: present
+    jenkins_plugins:
+      - greenballs
+      - pipeline-model-definition
+      - defining-a-pipeline-in-scm
+      - docker-workflow
+      - docker-commons
+      - docker-plugin
+      - git
+    pip_install_packages:
+      - name: docker
+    docker_users:
+      - root
+      - ec2-user
+    docker_yum_repo_url: "https://download.docker.com/linux/centos/docker-{{ docker_edition }}.repo"
+    docker_yum_repo_enable_edge: '0'
+    docker_yum_repo_enable_test: '0'
+    docker_yum_gpg_key: https://download.docker.com/linux/centos/gpg
+    docker_install_compose: true
+    docker_compose_version: "1.26.0"
+    docker_compose_path: /usr/local/bin/docker-compose
+    docker_package_state: latest
 
   roles:
     - role: geerlingguy.java
-    - role: geerlingguy.jenkins
+    - role: ./roles/geerlingguy.jenkins
+    - role: geerlingguy.git
+#    - role: geerlingguy.pip
+    - role: ./roles/geerlingguy.docker
+#      when: ansible_distribution != "Amazon"
+#  pre_tasks:
+#    - set_fact: ansible_distribution_major_version=5
+#      when: ansible_distribution == "Amazon"
