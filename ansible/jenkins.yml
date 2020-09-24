@@ -1,0 +1,19 @@
+- hosts: jenkins_server
+  become: true
+
+  vars:
+    jenkins_hostname: "{{ ansible_host }}"
+    java_packages:
+      - java-1.8.0-openjdk
+    jenkins_http_port: 80
+    jenkins_connection_retries: 60
+    jenkins_process_user: root
+#    jenkins_plugins:
+#      - blueocean
+#      - name: influxdb
+#        version: "1.12.1"
+#        jenkins_plugins_state: present
+
+  roles:
+    - role: geerlingguy.java
+    - role: geerlingguy.jenkins
