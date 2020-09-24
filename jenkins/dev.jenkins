@@ -1,25 +1,30 @@
 #!groovy
 // Check ub1 properties
 properties([disableConcurrentBuilds()])
-
 pipeline {
     agent {
         label 'master'
-        }
+    }
+    triggers{pollSCM('H/15 * * * *')}
     options {
         buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
-        timestamps()
     }
     stages {
-        stage("First step") {
+        stage("Create folder for source") {
             steps {
-                sh 'ls -al'
+                sh 'mkdir ./source'
             }
         }
-        stage("Second step") {
+        stage("Clone git repo") {
             steps {
-                sh 'ls -la ../'
+                sh 'git clone https://github.com/aandolg/yorubaname-website.git ./source'
             }
         }
+        stage("Build project") {
+            steps {
+                sh 'cd ./source && docker run -it --rm --name my-maven-project -v "./":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 mvn clean install'
+            }
+        }
+
     }
 }
