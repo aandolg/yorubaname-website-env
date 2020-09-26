@@ -98,6 +98,10 @@ resource "aws_instance" "jenkins" {
     aws_security_group.allow_http.id,
     aws_security_group.allow_https.id
   ]
+  root_block_device {
+    volume_size = 16
+  }
+
   provisioner "local-exec" {
     command = "echo ${aws_instance.jenkins.private_ip} > private_ips && echo ${aws_instance.jenkins.public_ip} > public_ip && echo \" ssh ec2-user@${aws_instance.jenkins.public_ip}\""
   }
