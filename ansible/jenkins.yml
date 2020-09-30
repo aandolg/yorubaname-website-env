@@ -17,6 +17,9 @@
       - docker-plugin
       - git
       - ghprb
+      - timestamper
+      - credentials-binding
+      - image-tag-parameter
     pip_install_packages:
       - name: docker
     docker_users:

@@ -108,7 +108,7 @@ resource "aws_instance" "jenkins" {
 
   provisioner "remote-exec" {
     inline = [
-      "sudo fallocate --length 2GiB /swapfile",
+      "sudo fallocate --length 3GiB /swapfile",
       "sudo chmod 600 /swapfile",
       "sudo mkswap /swapfile",
       "sudo swapon /swapfile",

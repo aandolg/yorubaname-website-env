@@ -7,24 +7,71 @@ pipeline {
     }
     triggers{pollSCM('H/15 * * * *')}
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10', artifactNumToKeepStr: '10'))
+        buildDiscarder(logRotator(numToKeepStr: '5', artifactNumToKeepStr: '5'))
+        timestamps()
     }
     stages {
-        stage("Create folder for source") {
+        stage('Load source') {
             steps {
-                sh 'mkdir ./source'
+                echo 'Git load source to source folder'
+                /*sh 'rm -rf source'
+                sh 'mkdir -p source'*/
+                dir('source') {
+                    /*sh 'env | grep ghprb'
+                    withCredentials([string(credentialsId:"${params.token_git_hub}", variable:'TOKEN')]) {
+                        sh 'git clone https://$TOKEN@github.com/${ghprbGhRepository}.git .'
+                        sh 'ls -la'
+                        sh 'git checkout ${ghprbSourceBranch}'
+                    }*/
+                   /* sh 'git clone https://github.com/aandolg/yorubaname-website.git .'*/
+                }
             }
         }
-        stage("Clone git repo") {
+        stage('Build project') {
             steps {
-                sh 'git clone https://github.com/aandolg/yorubaname-website.git ./source'
+                dir('source/') {
+                    sh 'docker run --rm -i --name my-maven-project -v "$HOME/.m2":/root/.m2 -v "${PWD}/":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 mvn -DskipTests clean install'
+                   // sh 'ls -la website/target'
+                }
             }
         }
-        stage("Build project") {
+        stage('Test project') {
             steps {
-                sh 'cd ./source && docker run -it --rm --name my-maven-project -v "./":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 mvn clean install'
+                dir('source') {
+                    sh 'docker run -d --name my-maven-project --link some_mysql:localhost  -p 8081:8081  -v "$HOME/.m2":/root/.m2 -v "$(pwd)":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 bash -c "cd /usr/src/mymaven/website && mvn spring-boot:run"'
+                }
+                sh 'sleep 40'
+                sh 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8081'
             }
         }
-
+    }
+    post {
+        success {
+            echo "Success"
+            echo "Commit container to image"
+            sh "docker commit my-maven-project  aandolg/devops_hillel:${BUILD_NUMBER}"
+            withCredentials([usernamePassword( credentialsId: 'docker-hub-credentials', usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
+                echo "Push to docker hub"
+                script {
+                    def registry_url = "registry.hub.docker.com/"
+                    sh "docker login -u $USER -p $PASSWORD ${registry_url}"
+                    docker.withRegistry("", "docker-hub-credentials") {
+                        sh "docker push aandolg/devops_hillel:${BUILD_NUMBER}"
+                    }
+                }
+            }
+            echo "Remove container"
+            sh 'docker rm my-maven-project -f'
+            echo "List images"
+            sh 'docker image ls'
+            echo "Remove images"
+            sh 'docker image ls --format="{{.Repository}}:{{.Tag}}" --filter=reference="aandolg/devops_hillel" | xargs docker rmi'
+            sh 'docker image ls'
+        }
+        failure {
+            echo "Failure"
+            echo "Remove container"
+            sh 'docker rm my-maven-project -f'
+        }
     }
 }
