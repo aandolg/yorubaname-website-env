@@ -1,0 +1,7 @@
+  ---
+# tasks file for roles/prepare.public_server
+- name: Create mysql container
+  ignore_errors: yes
+  shell: 'docker run --name some_mysql --hostname=some_mysql -e MYSQL_ROOT_PASSWORD=qa123123 -e MYSQL_DATABASE=dictionary -e MYSQL_USER=dictionary -e MYSQL_PASSWORD=dictionary -d -p 3306:3306 mysql:5.7'
+
+#Neeed added fixed for ALTER DATABASE dictionary DEFAULT CHARACTER SET = 'utf8' COLLATE 'utf8_unicode_ci';

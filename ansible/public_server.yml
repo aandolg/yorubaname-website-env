@@ -1,0 +1,25 @@
+- hosts: staging_server,production_server
+  become: true
+
+  vars:
+    pip_install_packages:
+      - name: docker
+    docker_users:
+      - root
+      - ec2-user
+    docker_yum_repo_url: "https://download.docker.com/linux/centos/docker-{{ docker_edition }}.repo"
+    docker_yum_repo_enable_edge: '0'
+    docker_yum_repo_enable_test: '0'
+    docker_yum_gpg_key: https://download.docker.com/linux/centos/gpg
+    docker_install_compose: true
+    docker_compose_version: "1.26.0"
+    docker_compose_path: /usr/local/bin/docker-compose
+    docker_package_state: latest
+    magento_mysql_host: "localhost"
+    magento_mysql_user: "dictionary"
+    magento_mysql_password: "dictionary"
+    magento_mysql_dbname: "dictionary"
+
+  roles:
+#    - role: ./roles/geerlingguy.docker
+    - role: ./roles/prepare.public_server

@@ -14,8 +14,8 @@ pipeline {
         stage('Load source') {
             steps {
                 echo 'Git load source to source folder'
-                /*sh 'rm -rf source'
-                sh 'mkdir -p source'*/
+                sh 'rm -rf source'
+                sh 'mkdir -p source'
                 dir('source') {
                     /*sh 'env | grep ghprb'
                     withCredentials([string(credentialsId:"${params.token_git_hub}", variable:'TOKEN')]) {
@@ -23,14 +23,20 @@ pipeline {
                         sh 'ls -la'
                         sh 'git checkout ${ghprbSourceBranch}'
                     }*/
-                   /* sh 'git clone https://github.com/aandolg/yorubaname-website.git .'*/
+                   sh 'git clone https://github.com/aandolg/yorubaname-website.git .'
                 }
             }
         }
         stage('Build project') {
             steps {
                 dir('source/') {
-                    sh 'docker run --rm -i --name my-maven-project -v "$HOME/.m2":/root/.m2 -v "${PWD}/":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 mvn -DskipTests clean install'
+
+                    sh 'docker run -i --name my-maven-project -v "$HOME/.m2":/root/.m2 -v "${PWD}/":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 mvn -DskipTests clean install'
+                    sh 'docker cp  "$HOME/.m2/." my-maven-project:/usr/share/maven/ref'
+                    sh 'docker cp   "${PWD}/." my-maven-project:/tmp/mymaven'
+                    echo "Commit container to image"
+                    sh "docker commit my-maven-project  aandolg/devops_hillel:${BUILD_NUMBER}"
+                    sh "docker rm my-maven-project -f"
                    // sh 'ls -la website/target'
                 }
             }
@@ -38,18 +44,30 @@ pipeline {
         stage('Test project') {
             steps {
                 dir('source') {
-                    sh 'docker run -d --name my-maven-project --link some_mysql:localhost  -p 8081:8081  -v "$HOME/.m2":/root/.m2 -v "$(pwd)":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 bash -c "cd /usr/src/mymaven/website && mvn spring-boot:run"'
+                    // sh 'docker run --name my-maven-project --link some_mysql:localhost  -p 8081:8081 -w /usr/src/mymaven maven:3.3-jdk-8 mvn --version'
+                    // sh 'docker cp  "$HOME/.m2/." my-maven-project:/root/.m2'
+                    // sh 'docker cp   "${PWD}/." my-maven-project:/usr/src/mymaven'
+                    // echo "Commit container to image"
+                    // sh "docker commit my-maven-project  aandolg/devops_hillel:${BUILD_NUMBER}"
+                    // sh "docker rm my-maven-project -f"
+                    sh 'docker run -d --name my-maven-project --link some_mysql:localhost  -p 8081:8081 -w /usr/src/mymaven aandolg/devops_hillel:${BUILD_NUMBER} bash -c "cd /tmp/mymaven/website && mvn spring-boot:run"'
+                    // sh 'docker run -d --name my-maven-project --link some_mysql:localhost  -p 8081:8081  -v "$HOME/.m2":/root/.m2 -v "$(pwd)":/usr/src/mymaven -w /usr/src/mymaven maven:3.3-jdk-8 bash -c "cd /usr/src/mymaven/website && mvn spring-boot:run"'
+                    // echo "Copy source file to image"
+                    // sh "docker cp $HOME/.m2 my-maven-project:/root/.m2"
+                    // sh 'docker cp "$(pwd)"/ my-maven-project:/usr/src/mymaven'
                 }
-                sh 'sleep 40'
-                sh 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8081'
+                retry(count: 30) {
+                   sh 'sleep 5'
+                   sh 'curl -s -o /dev/null -w "%{http_code}" http://localhost:8081'
+              }
             }
         }
     }
     post {
         success {
             echo "Success"
-            echo "Commit container to image"
-            sh "docker commit my-maven-project  aandolg/devops_hillel:${BUILD_NUMBER}"
+            // echo "Commit container to image"
+            // sh "docker commit my-maven-project  aandolg/devops_hillel:${BUILD_NUMBER}"
             withCredentials([usernamePassword( credentialsId: 'docker-hub-credentials', usernameVariable: 'USER', passwordVariable: 'PASSWORD')]) {
                 echo "Push to docker hub"
                 script {
@@ -65,13 +83,16 @@ pipeline {
             echo "List images"
             sh 'docker image ls'
             echo "Remove images"
-            sh 'docker image ls --format="{{.Repository}}:{{.Tag}}" --filter=reference="aandolg/devops_hillel" | xargs docker rmi'
+            sh 'docker image ls --format="{{.Repository}}:{{.Tag}}" --filter=reference="aandolg/devops_hillel" | xargs docker rmi -f'
             sh 'docker image ls'
         }
         failure {
             echo "Failure"
             echo "Remove container"
             sh 'docker rm my-maven-project -f'
+			echo "Remove images"
+            sh 'docker image ls --format="{{.Repository}}:{{.Tag}}" --filter=reference="aandolg/devops_hillel" | xargs docker rmi -f'
+            sh 'docker image ls'
         }
     }
 }

@@ -20,6 +20,8 @@
       - timestamper
       - credentials-binding
       - image-tag-parameter
+      - terraform
+      - ssh
     pip_install_packages:
       - name: docker
     docker_users:
